@@ -1,4 +1,9 @@
-/* ========== VARIABLES & THEMES ========== */
+/* ========================================================
+   ScholarSync — PhD Command Center
+   Complete Stylesheet (Light/Dark/System themes)
+   ======================================================== */
+
+/* ========== 1. VARIABLES & THEMES ========== */
 :root {
   --font: 'Inter', system-ui, -apple-system, sans-serif;
   --bg: #ffffff;
@@ -26,6 +31,7 @@
   --radius-lg: 16px;
 }
 
+/* Manual dark mode */
 [data-theme="dark"] {
   --bg: #0f172a;
   --bg-soft: #1e293b;
@@ -46,6 +52,7 @@
   --shadow-lg: 0 10px 30px rgba(0,0,0,0.5);
 }
 
+/* System preference dark mode */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0f172a;
@@ -62,10 +69,13 @@
     --success-soft: #064e3b;
     --warning-soft: #78350f;
     --danger-soft: #7f1d1d;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+    --shadow-lg: 0 10px 30px rgba(0,0,0,0.5);
   }
 }
 
-/* ========== RESET & BASE ========== */
+/* ========== 2. RESET & BASE ========== */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
 body {
@@ -76,8 +86,9 @@ body {
   line-height: 1.5;
   min-height: 100vh;
 }
+.hidden { display: none !important; }
 
-/* ========== REMINDER BANNER ========== */
+/* ========== 3. REMINDER BANNER ========== */
 .reminder-banner {
   position: fixed;
   top: 0; left: 0; right: 0;
@@ -109,7 +120,7 @@ body {
   50% { transform: scale(1.15); }
 }
 
-/* ========== LAYOUT ========== */
+/* ========== 4. LAYOUT ========== */
 .app-shell {
   display: grid;
   grid-template-columns: 240px 1fr;
@@ -172,7 +183,7 @@ body {
   border-top: 1px solid var(--border);
 }
 
-/* ========== MAIN ========== */
+/* ========== 5. MAIN CONTENT ========== */
 .main {
   display: flex;
   flex-direction: column;
@@ -206,7 +217,7 @@ body {
   overflow-y: auto;
 }
 
-/* ========== COMPONENTS ========== */
+/* ========== 6. BUTTONS ========== */
 .btn {
   font-family: var(--font);
   font-size: 13px;
@@ -240,6 +251,19 @@ body {
 }
 .icon-btn:hover { background: var(--border); }
 
+.icon-btn-sm {
+  width: 24px; height: 24px;
+  display: grid; place-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 16px;
+}
+.icon-btn-sm:hover { background: var(--bg-muted); }
+
+/* ========== 7. CARDS ========== */
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -256,7 +280,7 @@ body {
 .card-head h3 { font-size: 15px; font-weight: 700; }
 .card-head small { display: block; font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 
-/* Stats Grid */
+/* ========== 8. STATS GRID ========== */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -285,14 +309,14 @@ body {
 .stat-value { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
 .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
 
-/* Two-column layout */
+/* ========== 9. TWO-COLUMN LAYOUT ========== */
 .grid-2 {
   display: grid;
   grid-template-columns: 1.6fr 1fr;
   gap: 16px;
 }
 
-/* Up Next Card */
+/* ========== 10. UP NEXT CARD ========== */
 .upnext-card {
   background: linear-gradient(135deg, var(--primary), var(--primary-hover));
   color: white;
@@ -313,7 +337,7 @@ body {
   font-weight: 600;
 }
 
-/* Lists */
+/* ========== 11. LISTS ========== */
 .list { display: flex; flex-direction: column; gap: 8px; }
 .list-item {
   display: flex;
@@ -330,6 +354,7 @@ body {
 .list-item-title { font-size: 13px; font-weight: 600; }
 .list-item-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 
+/* ========== 12. BADGES ========== */
 .badge {
   display: inline-block;
   padding: 3px 8px;
@@ -344,7 +369,7 @@ body {
 .badge.warning { background: var(--warning-soft); color: var(--warning); }
 .badge.danger { background: var(--danger-soft); color: var(--danger); }
 
-/* Kanban */
+/* ========== 13. KANBAN BOARD ========== */
 .kanban {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -387,7 +412,7 @@ body {
 .kanban-card-title { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
 .kanban-card-meta { font-size: 11px; color: var(--text-muted); display: flex; gap: 6px; flex-wrap: wrap; }
 
-/* Forms */
+/* ========== 14. FORMS ========== */
 .form-group { margin-bottom: 14px; }
 .form-group label {
   display: block;
@@ -419,7 +444,7 @@ body {
 }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 
-/* Modal */
+/* ========== 15. MODAL ========== */
 dialog {
   border: 0;
   border-radius: var(--radius-lg);
@@ -449,7 +474,7 @@ dialog::backdrop { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
   gap: 10px;
 }
 
-/* Toast */
+/* ========== 16. TOAST NOTIFICATIONS ========== */
 .toast-container {
   position: fixed;
   bottom: 24px;
@@ -469,6 +494,7 @@ dialog::backdrop { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
   min-width: 260px;
   animation: slideIn 0.3s ease;
   font-size: 13px;
+  transition: opacity 0.3s, transform 0.3s;
 }
 .toast.success { border-left-color: var(--success); }
 .toast.warning { border-left-color: var(--warning); }
@@ -478,7 +504,7 @@ dialog::backdrop { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
   to { transform: translateX(0); opacity: 1; }
 }
 
-/* Empty State */
+/* ========== 17. EMPTY STATES ========== */
 .empty {
   text-align: center;
   padding: 40px 20px;
@@ -487,26 +513,7 @@ dialog::backdrop { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
 .empty-icon { font-size: 40px; margin-bottom: 10px; opacity: 0.5; }
 .empty-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
 
-/* Responsive */
-@media (max-width: 900px) {
-  .app-shell { grid-template-columns: 1fr; }
-  .sidebar {
-    position: static;
-    height: auto;
-    flex-direction: row;
-    padding: 12px;
-    overflow-x: auto;
-  }
-  .brand { margin-bottom: 0; margin-right: 16px; }
-  .nav { flex-direction: row; }
-  .sidebar-footer { padding-top: 0; border-top: 0; margin-left: auto; }
-  .grid-2 { grid-template-columns: 1fr; }
-  .topbar { padding: 16px; flex-direction: column; align-items: flex-start; }
-  .view-container { padding: 16px; }
-}
-
-
-/* ========== POMODORO WIDGET ========== */
+/* ========== 18. POMODORO WIDGET ========== */
 .pomodoro-widget {
   position: fixed;
   bottom: 24px;
@@ -538,17 +545,6 @@ dialog::backdrop { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
   letter-spacing: 0.5px;
   color: var(--primary);
 }
-.icon-btn-sm {
-  width: 24px; height: 24px;
-  display: grid; place-items: center;
-  background: transparent;
-  border: 0;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  color: var(--text-muted);
-  font-size: 16px;
-}
-.icon-btn-sm:hover { background: var(--bg-muted); }
 .pomodoro-study-title {
   font-size: 12px;
   color: var(--text-muted);
@@ -606,7 +602,7 @@ dialog::backdrop { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
   border-top: 1px solid var(--border);
 }
 
-/* ========== TEMPLATES MODAL ========== */
+/* ========== 19. EMAIL TEMPLATES MODAL ========== */
 #templatesModal {
   border: 0;
   border-radius: var(--radius-lg);
@@ -655,7 +651,7 @@ dialog::backdrop { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
   font-size: 12px;
   line-height: 1.7;
   white-space: pre-wrap;
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font);
   color: var(--text);
   max-height: 300px;
   overflow-y: auto;
@@ -673,7 +669,7 @@ dialog::backdrop { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
   gap: 8px;
 }
 
-/* ========== CHARTS ========== */
+/* ========== 20. CHARTS ========== */
 .charts-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -702,26 +698,8 @@ dialog::backdrop { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
   height: 200px;
   display: block;
 }
-.chart-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 12px;
-  font-size: 11px;
-}
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--text-muted);
-}
-.legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 2px;
-}
 
-/* ========== TASKS VIEW ========== */
+/* ========== 21. TASKS VIEW ========== */
 .task-item {
   display: flex;
   align-items: center;
@@ -749,7 +727,7 @@ dialog::backdrop { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
   font-weight: 600;
 }
 
-/* ========== POMODORO BUTTON IN STUDY ========== */
+/* ========== 22. POMODORO START BUTTON ========== */
 .pomodoro-start {
   background: var(--danger-soft);
   color: var(--danger);
@@ -760,16 +738,54 @@ dialog::backdrop { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
   font-weight: 600;
   cursor: pointer;
   font-family: var(--font);
+  transition: all 0.15s;
 }
 .pomodoro-start:hover { background: var(--danger); color: white; }
 
-/* ========== RESPONSIVE ========== */
+/* ========== 23. RESPONSIVE BREAKPOINTS ========== */
+
+/* Tablet */
 @media (max-width: 900px) {
+  .app-shell { grid-template-columns: 1fr; }
+  .sidebar {
+    position: static;
+    height: auto;
+    flex-direction: row;
+    padding: 12px;
+    overflow-x: auto;
+  }
+  .brand { margin-bottom: 0; margin-right: 16px; }
+  .nav { flex-direction: row; }
+  .sidebar-footer { padding-top: 0; border-top: 0; margin-left: auto; }
+  .grid-2 { grid-template-columns: 1fr; }
   .charts-grid { grid-template-columns: 1fr; }
+  .topbar { padding: 16px; flex-direction: column; align-items: flex-start; }
+  .view-container { padding: 16px; }
   .pomodoro-widget {
     left: 16px;
     right: 16px;
     width: auto;
     bottom: 16px;
   }
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .stat-card { padding: 14px; }
+  .stat-value { font-size: 18px; }
+  .stat-icon { width: 36px; height: 36px; font-size: 16px; }
+  .form-row { grid-template-columns: 1fr; }
+  .kanban { grid-template-columns: 1fr; }
+  .upnext-card .upnext-title { font-size: 16px; }
+  .topbar h1 { font-size: 18px; }
+  .toast-container { left: 16px; right: 16px; bottom: 16px; }
+  .toast { min-width: auto; }
+}
+
+/* Small mobile */
+@media (max-width: 400px) {
+  .stats-grid { grid-template-columns: 1fr; }
+  .brand small { display: none; }
+  .today-chip { display: none; }
 }
