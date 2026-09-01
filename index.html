@@ -1,56 +1,93 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#111827">
-  <meta name="description" content="A local-first research planning dashboard for papers, applications, IELTS, learning and projects.">
-  <title>Research Command Center</title><link rel="stylesheet" href="style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#4f46e5">
+  <title>ScholarSync — PhD Command Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="app-shell">
-<div class="page">
-<header id="top">
-  <a class="brand header-brand" href="#top"><span class="brand-mark">R</span><span><b>Research Command Center</b><small>Personal research workspace</small></span></a>
-  <div class="today"><b id="currentDate">—</b><small id="dayStatus">Plan the work. Finish the work.</small></div>
-  <div class="top-actions"><span id="saveState">Saved locally</span><button id="importBtn" class="ghost">Import</button><button id="exportBtn" class="ghost">Export</button><button id="newBtn" class="icon-button" aria-label="Reset dashboard" title="Reset dashboard">↻</button><input id="fileInput" type="file" accept=".json,application/json" hidden></div>
-</header>
-<main>
-  <section class="stats" aria-label="Progress summary">
-    <article class="card progress-card"><div class="stat-icon blue">↗</div><div class="stat-copy"><span>Overall progress</span><strong id="overall">0%</strong><small id="overallText"></small></div><div class="bar"><i id="overallBar"></i></div></article>
-    <article class="card stat-card"><div class="stat-icon violet">◆</div><div><span>Active phase</span><strong id="activePhase">—</strong><small id="activeHint">—</small></div></article>
-    <article class="card stat-card"><div class="stat-icon amber">◷</div><div><span>Next deadline</span><strong id="nextDeadline">—</strong><small id="nextTask">—</small></div></article>
-    <article class="card stat-card"><div class="stat-icon green">★</div><div><span>PhD-ready</span><strong id="outcomeScore">0 / 5</strong><small>key milestones achieved</small></div></article>
-  </section>
-  <section id="roadmapSection" class="card section-card"><div class="section-head"><div><span class="section-kicker">PROJECT PLAN / WORKFLOW</span><h2>Research roadmap</h2><small>Six sections covering the complete research journey</small></div><button id="focusAll" class="ghost">View all phases</button></div><div id="roadmap" class="roadmap-grid"></div></section>
-  <div class="dashboard-lower">
-  <section id="tasksSection" class="card section-card work">
-    <div class="section-head task-heading"><div><span class="section-kicker">ACTION CENTER</span><h2>My work</h2><small id="phaseLabel">All phases</small></div><button id="addTask" class="primary">＋ Add task</button></div>
-    <div class="controls"><label class="search-box"><span>⌕</span><input id="search" aria-label="Search tasks" placeholder="Search tasks and notes…"></label><select id="status" aria-label="Filter by status"><option value="all">All statuses</option><option value="active">Active</option><option value="done">Completed</option></select><select id="priority" aria-label="Filter by priority"><option value="all">All priorities</option><option>High</option><option>Medium</option><option>Low</option></select></div>
-    <div class="bulk-actions"><label><input id="selectAllTasks" type="checkbox"> Select all shown</label><span id="selectedCount">0 selected</span><button id="deleteSelected" class="danger" disabled>Delete selected</button><button id="deleteAll" class="danger-outline">Delete all</button></div>
-    <div id="taskList"></div>
-  </section>
-  <div class="bottom-grid">
-    <section id="focusSection" class="card section-card"><div class="section-head"><div><span class="section-kicker">THIS WEEK</span><h2>Weekly focus</h2></div><button id="addFocus" class="text-button">＋ Add item</button></div><div id="focusList" class="focus-grid"></div></section>
-    <section id="outcomesSection" class="card section-card"><div class="section-head"><div><span class="section-kicker">BIG PICTURE</span><h2>PhD-ready outcomes</h2></div></div><div id="outcomes" class="outcome-grid"></div></section>
+  <!-- Reminder Banner (shown when event is imminent) -->
+  <div id="reminderBanner" class="reminder-banner hidden">
+    <span class="reminder-icon">🔔</span>
+    <div class="reminder-content">
+      <strong id="reminderTitle">Upcoming Event</strong>
+      <small id="reminderMeta">in 10 minutes</small>
+    </div>
+    <button id="dismissReminder" class="icon-btn" aria-label="Dismiss">×</button>
   </div>
+
+  <div class="app-shell">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <a href="#" class="brand">
+        <span class="brand-mark">S</span>
+        <span><b>ScholarSync</b><small>PhD Command Center</small></span>
+      </a>
+      <nav class="nav">
+        <a href="#" class="nav-link active" data-view="dashboard"><span>📊</span> Dashboard</a>
+        <a href="#" class="nav-link" data-view="applications"><span>🎓</span> Applications</a>
+        <a href="#" class="nav-link" data-view="emails"><span>📧</span> Email Outreach</a>
+        <a href="#" class="nav-link" data-view="meetings"><span>🤝</span> Meetings</a>
+        <a href="#" class="nav-link" data-view="study"><span>📚</span> Study Plan</a>
+        <a href="#" class="nav-link" data-view="goals"><span>🎯</span> Goals</a>
+      </nav>
+      <div class="sidebar-footer">
+        <button id="themeToggle" class="icon-btn" title="Toggle theme">🌙</button>
+        <button id="exportBtn" class="icon-btn" title="Export data">💾</button>
+        <button id="importBtn" class="icon-btn" title="Import data">📂</button>
+        <input id="fileInput" type="file" accept=".json" hidden>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h1 id="viewTitle">Dashboard</h1>
+          <p id="viewSubtitle">Your PhD journey at a glance</p>
+        </div>
+        <div class="topbar-actions">
+          <div class="today-chip">
+            <span id="currentDate">—</span>
+          </div>
+          <button id="notifPermission" class="btn btn-ghost">🔔 Enable Reminders</button>
+        </div>
+      </header>
+
+      <div id="viewContainer" class="view-container">
+        <!-- Views are rendered here dynamically -->
+      </div>
+    </main>
   </div>
-  <section class="card data-card" hidden><details><summary>Developer view: current JSON data</summary><pre id="jsonPreview"></pre></details></section>
-</main>
-<footer>Research Command Center <span>•</span> Local-first <span>•</span> Your data stays yours</footer>
-</div></div>
-<dialog id="taskDialog"><form id="taskForm">
-  <div class="modal-head"><div><span class="section-kicker">TASK DETAILS</span><h2 id="modalTitle">Add task</h2></div><button type="button" class="icon-button" id="closeTask" aria-label="Close">×</button></div><input type="hidden" id="editId">
-  <label>Task<input id="title" required maxlength="180" placeholder="What needs to be done?"></label>
-  <div class="form-grid"><label>Phase<select id="phase"></select></label><label>Priority<select id="prio"><option>High</option><option selected>Medium</option><option>Low</option></select></label></div>
-  <div class="form-grid"><label>Deadline<input id="due" type="date"></label><label>Estimated minutes<input id="minutes" type="number" min="5" step="5" value="60"></label></div>
-  <label>Notes<textarea id="notes" rows="4" placeholder="Add useful context or next steps…"></textarea></label><div class="modal-actions"><button type="button" id="deleteTask" class="danger hidden">Delete task</button><button class="primary">Save task</button></div>
-</form></dialog>
-<dialog id="sectionDialog"><form id="sectionForm">
-  <div class="modal-head"><div><span class="section-kicker">WORKFLOW SECTION</span><h2>Edit section</h2></div><button type="button" class="icon-button" id="closeSection" aria-label="Close">×</button></div>
-  <input type="hidden" id="sectionId">
-  <label>Section title<input id="sectionTitle" required maxlength="60"></label>
-  <label>Short description<input id="sectionSub" required maxlength="100"></label>
-  <label>Deliverable<textarea id="sectionDeliverable" required maxlength="180" rows="3"></textarea></label>
-  <label>Timeline<input id="sectionTimeline" required maxlength="120"></label>
-  <div class="modal-actions section-save"><button class="primary">Update section</button></div>
-</form></dialog><script src="app.js"></script>
-</body></html>
+
+  <!-- Universal Modal -->
+  <dialog id="modal">
+    <form id="modalForm">
+      <div class="modal-head">
+        <h2 id="modalTitle">Add Item</h2>
+        <button type="button" class="icon-btn" id="closeModal">×</button>
+      </div>
+      <div id="modalBody"></div>
+      <div class="modal-actions">
+        <button type="button" id="modalDelete" class="btn btn-danger hidden">Delete</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
+  </script>
+</body>
+</html>
