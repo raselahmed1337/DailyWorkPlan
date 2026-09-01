@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- Reminder Banner (shown when event is imminent) -->
+  <!-- Reminder Banner -->
   <div id="reminderBanner" class="reminder-banner hidden">
     <span class="reminder-icon">🔔</span>
     <div class="reminder-content">
@@ -22,7 +22,6 @@
   </div>
 
   <div class="app-shell">
-    <!-- Sidebar Navigation -->
     <aside class="sidebar">
       <a href="#" class="brand">
         <span class="brand-mark">S</span>
@@ -33,6 +32,7 @@
         <a href="#" class="nav-link" data-view="applications"><span>🎓</span> Applications</a>
         <a href="#" class="nav-link" data-view="emails"><span>📧</span> Email Outreach</a>
         <a href="#" class="nav-link" data-view="meetings"><span>🤝</span> Meetings</a>
+        <a href="#" class="nav-link" data-view="tasks"><span>✅</span> Tasks</a>
         <a href="#" class="nav-link" data-view="study"><span>📚</span> Study Plan</a>
         <a href="#" class="nav-link" data-view="goals"><span>🎯</span> Goals</a>
       </nav>
@@ -44,7 +44,6 @@
       </div>
     </aside>
 
-    <!-- Main Content -->
     <main class="main">
       <header class="topbar">
         <div>
@@ -52,17 +51,35 @@
           <p id="viewSubtitle">Your PhD journey at a glance</p>
         </div>
         <div class="topbar-actions">
-          <div class="today-chip">
-            <span id="currentDate">—</span>
-          </div>
+          <div class="today-chip"><span id="currentDate">—</span></div>
           <button id="notifPermission" class="btn btn-ghost">🔔 Enable Reminders</button>
         </div>
       </header>
-
-      <div id="viewContainer" class="view-container">
-        <!-- Views are rendered here dynamically -->
-      </div>
+      <div id="viewContainer" class="view-container"></div>
     </main>
+  </div>
+
+  <!-- Pomodoro Floating Widget -->
+  <div id="pomodoroWidget" class="pomodoro-widget hidden">
+    <div class="pomodoro-head">
+      <span class="pomodoro-label">🍅 Focus Session</span>
+      <button id="pomodoroClose" class="icon-btn-sm">×</button>
+    </div>
+    <div id="pomodoroStudyTitle" class="pomodoro-study-title">—</div>
+    <div class="pomodoro-timer">
+      <svg viewBox="0 0 100 100" class="pomodoro-ring">
+        <circle cx="50" cy="50" r="45" class="ring-bg"/>
+        <circle id="pomodoroRing" cx="50" cy="50" r="45" class="ring-progress"/>
+      </svg>
+      <div id="pomodoroTime" class="pomodoro-time">25:00</div>
+    </div>
+    <div class="pomodoro-controls">
+      <button id="pomodoroPlay" class="btn btn-primary btn-sm">▶ Start</button>
+      <button id="pomodoroReset" class="btn btn-ghost btn-sm">↻ Reset</button>
+    </div>
+    <div class="pomodoro-stats">
+      <span>🍅 <strong id="pomodoroCount">0</strong> completed</span>
+    </div>
   </div>
 
   <!-- Universal Modal -->
@@ -80,14 +97,20 @@
     </form>
   </dialog>
 
-  <!-- Toast Container -->
+  <!-- Templates Modal -->
+  <dialog id="templatesModal">
+    <div class="modal-head">
+      <h2>📧 Email Templates</h2>
+      <button type="button" class="icon-btn" id="closeTemplates">×</button>
+    </div>
+    <div id="templatesBody" class="templates-body"></div>
+  </dialog>
+
   <div id="toastContainer" class="toast-container"></div>
 
   <script src="app.js"></script>
   <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js');
-    }
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
   </script>
 </body>
 </html>

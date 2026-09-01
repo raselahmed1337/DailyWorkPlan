@@ -1,11 +1,79 @@
-// ========== STATE MANAGEMENT ==========
-const STORAGE_KEY = 'scholarsync_v1';
+// ========== CONSTANTS ==========
+const STORAGE_KEY = 'scholarsync_v2';
+const POMODORO_WORK = 25 * 60; // 25 minutes in seconds
+const POMODORO_BREAK = 5 * 60; // 5 minutes
+
+// Email templates
+const EMAIL_TEMPLATES = {
+  cold: {
+    name: 'Cold Email to Professor',
+    subject: 'Prospective PhD Student — Research Inquiry',
+    body: `Dear Professor {{LAST_NAME}},
+
+I hope this email finds you well. My name is {{YOUR_NAME}}, and I am a prospective PhD student interested in joining your research group at {{UNIVERSITY}}.
+
+I recently read your paper "{{PAPER_TITLE}}" and was particularly fascinated by {{SPECIFIC_ASPECT}}. My own background in {{YOUR_BACKGROUND}} aligns well with your work on {{RESEARCH_AREA}}.
+
+I would be grateful for the opportunity to discuss potential PhD openings in your lab. I have attached my CV for your reference.
+
+Thank you for your time and consideration.
+
+Best regards,
+{{YOUR_NAME}}
+{{YOUR_UNIVERSITY}}`
+  },
+  followup: {
+    name: 'Follow-Up Email',
+    subject: 'Following Up — PhD Inquiry',
+    body: `Dear Professor {{LAST_NAME}},
+
+I hope you're doing well. I'm following up on my email from {{ORIGINAL_DATE}} regarding potential PhD opportunities in your research group.
+
+I remain very interested in your work on {{RESEARCH_AREA}} and would welcome the chance to discuss how my background in {{YOUR_BACKGROUND}} could contribute to your team.
+
+I understand you have a busy schedule, and I appreciate any time you can spare.
+
+Best regards,
+{{YOUR_NAME}}`
+  },
+  lor: {
+    name: 'Letter of Recommendation Request',
+    subject: 'Request for Letter of Recommendation — PhD Applications',
+    body: `Dear Professor {{LAST_NAME}},
+
+I hope this message finds you well. I am writing to kindly ask if you would be willing to provide a letter of recommendation for my PhD applications.
+
+I had the privilege of {{CONTEXT — e.g., "working in your lab last semester" / "taking your course on X"}}. Your guidance significantly shaped my research interests in {{RESEARCH_AREA}}, and I believe a recommendation from you would strongly support my applications.
+
+I am applying to PhD programs in {{FIELD}} with a deadline of {{DEADLINE}}. I would be happy to provide my CV, statement of purpose, and any other materials that might help.
+
+Thank you very much for considering my request.
+
+Best regards,
+{{YOUR_NAME}}`
+  },
+  thanks: {
+    name: 'Thank You After Meeting',
+    subject: 'Thank You — Our Meeting Today',
+    body: `Dear Professor {{LAST_NAME}},
+
+Thank you so much for taking the time to meet with me today. I truly appreciated your insights on {{TOPIC_DISCUSSED}} and your advice regarding {{SPECIFIC_ADVICE}}.
+
+As discussed, I will {{ACTION_ITEM}} by {{DEADLINE}}. I look forward to staying in touch.
+
+Best regards,
+{{YOUR_NAME}}`
+  }
+};
+
+// ========== STATE ==========
 const defaultState = {
   applications: [],
   emails: [],
   meetings: [],
   study: [],
   goals: [],
+  tasks: [], // NEW: general tasks (from meetings etc.)
   settings: { theme: 'system', remindersEnabled: false }
 };
 
@@ -18,7 +86,10 @@ const State = {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        this.data = { ...structuredClone(defaultState), ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        this.data = { ...structuredClone(defaultState), ...parsed };
+        // Ensure tasks array exists (backward compat)
+        if (!Array.isArray(this.data.tasks)) this.data.tasks = [];
       } catch { this.loadTemplate(); }
     } else {
       this.loadTemplate();
@@ -28,20 +99,24 @@ const State = {
   loadTemplate() {
     this.data = {
       applications: [
-        { id: uid(), university: 'ETH Zurich', program: 'PhD in Computer Science', deadline: '2026-12-15', status: 'preparing', notes: 'Prof. Smith lab' }
+        { id: uid(), university: 'ETH Zurich', program: 'PhD in Computer Science', deadline: '2026-12-15', status: 'preparing', notes: 'Prof. Smith lab' },
+        { id: uid(), university: 'MIT', program: 'PhD in EECS', deadline: '2026-12-01', status: 'target', notes: '' }
       ],
       emails: [
         { id: uid(), professor: 'Dr. Jane Smith', university: 'ETH Zurich', dateSent: todayISO(), status: 'awaiting', followUpDate: addDays(7) }
       ],
       meetings: [
-        { id: uid(), title: 'Advisor Meeting', date: addDays(2) + 'T14:00', with: 'Prof. Johnson', agenda: 'Discuss research proposal' }
+        { id: uid(), title: 'Advisor Meeting', date: addDays(2) + 'T14:00', with: 'Prof. Johnson', agenda: 'Discuss research proposal', notes: '- Draft 1-page summary\n- Email Prof. X about collaboration\n- Read 2 papers on transformers' }
       ],
       study: [
-        { id: uid(), topic: 'Read paper: Attention Is All You Need', duration: 60, date: todayISO(), done: false }
+        { id: uid(), topic: 'Read paper: Attention Is All You Need', duration: 60, date: todayISO(), done: false, pomodoros: 0 }
       ],
       goals: [
         { id: uid(), title: 'Finalize university shortlist (8-10)', deadline: addDays(14), done: false },
         { id: uid(), title: 'Secure 2 Letters of Recommendation', deadline: addDays(30), done: false }
+      ],
+      tasks: [
+        { id: uid(), title: 'Update CV with recent projects', deadline: addDays(3), done: false, source: 'Manual' }
       ],
       settings: { theme: 'system', remindersEnabled: false }
     };
@@ -80,11 +155,31 @@ const minutesUntil = (dateTime) => {
   return Math.round((new Date(dateTime).getTime() - Date.now()) / 60000);
 };
 
+// Parse meeting notes into task items
+const parseNotesToTasks = (notes, meetingTitle) => {
+  if (!notes) return [];
+  const lines = notes.split('\n');
+  const tasks = [];
+  for (const line of lines) {
+    const trimmed = line.trim().replace(/^[-*•]\s*/, '').replace(/^\[\s*\]\s*/, '');
+    if (trimmed.length > 0) {
+      tasks.push({
+        id: uid(),
+        title: trimmed,
+        deadline: addDays(7),
+        done: false,
+        source: `Meeting: ${meetingTitle}`
+      });
+    }
+  }
+  return tasks;
+};
+
 // ========== NOTIFICATION SERVICE ==========
 const Notifier = {
   async requestPermission() {
     if (!('Notification' in window)) {
-      Toast.show('Notifications not supported in this browser', 'warning');
+      Toast.show('Notifications not supported', 'warning');
       return false;
     }
     const perm = await Notification.requestPermission();
@@ -95,7 +190,7 @@ const Notifier = {
 
   send(title, body) {
     if (State.data.settings.remindersEnabled && Notification.permission === 'granted') {
-      new Notification(title, { body, icon: '🎓' });
+      new Notification(title, { body });
     }
   },
 
@@ -106,11 +201,8 @@ const Notifier = {
     banner.classList.remove('hidden');
   },
 
-  hideBanner() {
-    document.getElementById('reminderBanner').classList.add('hidden');
-  },
+  hideBanner() { document.getElementById('reminderBanner').classList.add('hidden'); },
 
-  // Check for upcoming events every 60s
   startChecker() {
     this.check();
     setInterval(() => this.check(), 60000);
@@ -118,7 +210,6 @@ const Notifier = {
 
   check() {
     const now = Date.now();
-    // Check meetings (within 15 minutes)
     const upcomingMeeting = State.data.meetings.find(m => {
       const diff = new Date(m.date).getTime() - now;
       return diff > 0 && diff <= 15 * 60 * 1000;
@@ -130,17 +221,15 @@ const Notifier = {
       return;
     }
 
-    // Check goals (due today)
     const todayGoal = State.data.goals.find(g => !g.done && g.deadline === todayISO());
     if (todayGoal) {
       this.showBanner('Goal Due Today', todayGoal.title);
       return;
     }
 
-    // Check application deadlines (within 7 days)
     const urgentApp = State.data.applications.find(a => {
       const d = daysUntil(a.deadline);
-      return d !== null && d >= 0 && d <= 7 && a.status !== 'submitted' && a.status !== 'accepted' && a.status !== 'rejected';
+      return d !== null && d >= 0 && d <= 7 && !['submitted', 'accepted', 'rejected'].includes(a.status);
     });
     if (urgentApp) {
       this.showBanner(`Application due in ${daysUntil(urgentApp.deadline)} days`, `${urgentApp.university} — ${urgentApp.program}`);
@@ -190,21 +279,130 @@ const Modal = {
   close() { document.getElementById('modal').close(); }
 };
 
+// ========== POMODORO SERVICE ==========
+const Pomodoro = {
+  secondsLeft: POMODORO_WORK,
+  totalSeconds: POMODORO_WORK,
+  isRunning: false,
+  isBreak: false,
+  studyId: null,
+  intervalId: null,
+
+  start(studyId) {
+    const study = State.data.study.find(s => s.id === studyId);
+    if (!study) return;
+
+    this.studyId = studyId;
+    this.secondsLeft = POMODORO_WORK;
+    this.totalSeconds = POMODORO_WORK;
+    this.isBreak = false;
+    this.isRunning = true;
+
+    document.getElementById('pomodoroStudyTitle').textContent = study.topic;
+    document.getElementById('pomodoroWidget').classList.remove('hidden');
+    this.updateDisplay();
+    this.tick();
+  },
+
+  tick() {
+    if (this.intervalId) clearInterval(this.intervalId);
+    this.intervalId = setInterval(() => {
+      if (!this.isRunning) return;
+      this.secondsLeft--;
+      this.updateDisplay();
+
+      if (this.secondsLeft <= 0) {
+        this.complete();
+      }
+    }, 1000);
+  },
+
+  complete() {
+    if (!this.isBreak) {
+      // Work session complete
+      const study = State.data.study.find(s => s.id === this.studyId);
+      if (study) {
+        study.pomodoros = (study.pomodoros || 0) + 1;
+        State.save();
+      }
+      Notifier.send('🍅 Pomodoro Complete!', 'Time for a 5-minute break.');
+      Toast.show('🍅 Pomodoro complete! Take a break.', 'success');
+
+      // Switch to break
+      this.isBreak = true;
+      this.secondsLeft = POMODORO_BREAK;
+      this.totalSeconds = POMODORO_BREAK;
+      document.getElementById('pomodoroStudyTitle').textContent = 'Break time ☕';
+    } else {
+      // Break complete
+      Notifier.send('Break over!', 'Ready for another pomodoro?');
+      Toast.show('Break over! Ready for another round?', 'info');
+      this.isBreak = false;
+      this.secondsLeft = POMODORO_WORK;
+      this.totalSeconds = POMODORO_WORK;
+      const study = State.data.study.find(s => s.id === this.studyId);
+      if (study) document.getElementById('pomodoroStudyTitle').textContent = study.topic;
+      this.isRunning = false;
+      document.getElementById('pomodoroPlay').textContent = '▶ Start';
+    }
+    this.updateDisplay();
+  },
+
+  toggle() {
+    this.isRunning = !this.isRunning;
+    document.getElementById('pomodoroPlay').textContent = this.isRunning ? '⏸ Pause' : '▶ Resume';
+    if (this.isRunning) this.tick();
+  },
+
+  reset() {
+    this.isRunning = false;
+    this.isBreak = false;
+    this.secondsLeft = POMODORO_WORK;
+    this.totalSeconds = POMODORO_WORK;
+    document.getElementById('pomodoroPlay').textContent = '▶ Start';
+    this.updateDisplay();
+  },
+
+  close() {
+    this.isRunning = false;
+    if (this.intervalId) clearInterval(this.intervalId);
+    document.getElementById('pomodoroWidget').classList.add('hidden');
+  },
+
+  updateDisplay() {
+    const mins = Math.floor(this.secondsLeft / 60);
+    const secs = this.secondsLeft % 60;
+    document.getElementById('pomodoroTime').textContent =
+      `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+    // Update ring
+    const progress = this.secondsLeft / this.totalSeconds;
+    const circumference = 2 * Math.PI * 45;
+    const offset = circumference * (1 - progress);
+    document.getElementById('pomodoroRing').style.strokeDashoffset = offset;
+
+    // Update count
+    const study = State.data.study.find(s => s.id === this.studyId);
+    document.getElementById('pomodoroCount').textContent = study?.pomodoros || 0;
+  }
+};
+
 // ========== VIEWS ==========
 const Views = {
   dashboard() {
     const apps = State.data.applications;
-    const submitted = apps.filter(a => a.status === 'submitted' || a.status === 'interview' || a.status === 'accepted').length;
+    const submitted = apps.filter(a => ['submitted', 'interview', 'accepted'].includes(a.status)).length;
     const awaitingReply = State.data.emails.filter(e => e.status === 'awaiting').length;
     const todayMeetings = State.data.meetings.filter(m => m.date.startsWith(todayISO())).length;
     const studyDone = State.data.study.filter(s => s.date === todayISO() && s.done).length;
     const studyTotal = State.data.study.filter(s => s.date === todayISO()).length;
+    const tasksPending = State.data.tasks.filter(t => !t.done).length;
 
-    // Find next upcoming event
     const allEvents = [
       ...State.data.meetings.map(m => ({ type: 'meeting', title: m.title, date: m.date, meta: `with ${m.with}` })),
       ...State.data.goals.filter(g => !g.done).map(g => ({ type: 'goal', title: g.title, date: g.deadline + 'T23:59', meta: 'Goal deadline' })),
-      ...apps.filter(a => !['submitted', 'accepted', 'rejected'].includes(a.status)).map(a => ({ type: 'application', title: `${a.university}`, date: a.deadline + 'T23:59', meta: a.program }))
+      ...apps.filter(a => !['submitted', 'accepted', 'rejected'].includes(a.status)).map(a => ({ type: 'application', title: a.university, date: a.deadline + 'T23:59', meta: a.program })),
+      ...State.data.tasks.filter(t => !t.done && t.deadline).map(t => ({ type: 'task', title: t.title, date: t.deadline + 'T23:59', meta: `Task • ${t.source || 'Manual'}` }))
     ].filter(e => new Date(e.date).getTime() > Date.now())
       .sort((a, b) => new Date(a.date) - new Date(b.date));
 
@@ -221,64 +419,34 @@ const Views = {
       ` : ''}
 
       <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-icon">🎓</div>
-          <div>
-            <div class="stat-value">${submitted}/${apps.length}</div>
-            <div class="stat-label">Applications</div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon warning">📧</div>
-          <div>
-            <div class="stat-value">${awaitingReply}</div>
-            <div class="stat-label">Awaiting Reply</div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon success">🤝</div>
-          <div>
-            <div class="stat-value">${todayMeetings}</div>
-            <div class="stat-label">Today's Meetings</div>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon">📚</div>
-          <div>
-            <div class="stat-value">${studyDone}/${studyTotal}</div>
-            <div class="stat-label">Study Done Today</div>
-          </div>
-        </div>
+        <div class="stat-card"><div class="stat-icon">🎓</div><div><div class="stat-value">${submitted}/${apps.length}</div><div class="stat-label">Applications</div></div></div>
+        <div class="stat-card"><div class="stat-icon warning">📧</div><div><div class="stat-value">${awaitingReply}</div><div class="stat-label">Awaiting Reply</div></div></div>
+        <div class="stat-card"><div class="stat-icon success">🤝</div><div><div class="stat-value">${todayMeetings}</div><div class="stat-label">Today's Meetings</div></div></div>
+        <div class="stat-card"><div class="stat-icon">✅</div><div><div class="stat-value">${tasksPending}</div><div class="stat-label">Open Tasks</div></div></div>
       </div>
 
       <div class="grid-2">
         <div class="card">
           <div class="card-head">
-            <div>
-              <h3>Upcoming Deadlines</h3>
-              <small>Applications and goals sorted by due date</small>
-            </div>
+            <div><h3>Upcoming Deadlines</h3><small>All time-bound items</small></div>
           </div>
           <div class="list">
             ${allEvents.slice(0, 5).map(e => `
               <div class="list-item">
-                <div style="font-size:20px">${e.type === 'meeting' ? '🤝' : e.type === 'goal' ? '🎯' : '🎓'}</div>
+                <div style="font-size:20px">${e.type === 'meeting' ? '🤝' : e.type === 'goal' ? '🎯' : e.type === 'task' ? '✅' : '🎓'}</div>
                 <div class="list-item-content">
                   <div class="list-item-title">${esc(e.title)}</div>
                   <div class="list-item-meta">${esc(e.meta)} • ${fmtDate(e.date.slice(0, 10))}</div>
                 </div>
                 <span class="badge ${daysUntil(e.date.slice(0, 10)) <= 3 ? 'danger' : daysUntil(e.date.slice(0, 10)) <= 7 ? 'warning' : 'primary'}">${daysUntil(e.date.slice(0, 10))}d</span>
               </div>
-            `).join('') || '<div class="empty"><div class="empty-icon">✨</div><div class="empty-title">All clear!</div><div>No upcoming deadlines</div></div>'}
+            `).join('') || '<div class="empty"><div class="empty-icon">✨</div><div class="empty-title">All clear!</div></div>'}
           </div>
         </div>
 
         <div class="card">
           <div class="card-head">
-            <div>
-              <h3>Today's Study Plan</h3>
-              <small>${fmtDate(todayISO())}</small>
-            </div>
+            <div><h3>Today's Study</h3><small>${fmtDate(todayISO())}</small></div>
             <button class="btn btn-sm btn-ghost" onclick="App.switchView('study')">View all</button>
           </div>
           <div class="list">
@@ -287,11 +455,83 @@ const Views = {
                 <input type="checkbox" ${s.done ? 'checked' : ''} onchange="App.toggleStudy('${s.id}')" style="width:18px;height:18px;cursor:pointer">
                 <div class="list-item-content">
                   <div class="list-item-title" style="${s.done ? 'text-decoration:line-through;opacity:0.6' : ''}">${esc(s.topic)}</div>
-                  <div class="list-item-meta">${s.duration} min</div>
+                  <div class="list-item-meta">${s.duration} min • 🍅 ${s.pomodoros || 0}</div>
                 </div>
+                ${!s.done ? `<button class="pomodoro-start" onclick="Pomodoro.start('${s.id}')">🍅 Focus</button>` : ''}
               </div>
             `).join('') || '<div class="empty"><div class="empty-icon">📚</div><div class="empty-title">No study planned</div></div>'}
           </div>
+        </div>
+      </div>
+
+      ${this.renderCharts()}
+    `;
+  },
+
+  renderCharts() {
+    // Chart 1: Application status distribution
+    const statusCounts = {
+      target: State.data.applications.filter(a => a.status === 'target').length,
+      preparing: State.data.applications.filter(a => a.status === 'preparing').length,
+      submitted: State.data.applications.filter(a => a.status === 'submitted').length,
+      interview: State.data.applications.filter(a => a.status === 'interview').length,
+      accepted: State.data.applications.filter(a => a.status === 'accepted').length,
+      rejected: State.data.applications.filter(a => a.status === 'rejected').length
+    };
+    const maxApp = Math.max(1, ...Object.values(statusCounts));
+    const statusColors = {
+      target: '#9ca3af', preparing: '#f59e0b', submitted: '#4f46e5',
+      interview: '#8b5cf6', accepted: '#10b981', rejected: '#ef4444'
+    };
+
+    const appChartBars = Object.entries(statusCounts).map(([status, count], i) => {
+      const height = (count / maxApp) * 150;
+      const x = 30 + i * 55;
+      return `
+        <rect x="${x}" y="${180 - height}" width="40" height="${height}" fill="${statusColors[status]}" rx="4"/>
+        <text x="${x + 20}" y="${175 - height}" text-anchor="middle" font-size="11" font-weight="700" fill="var(--text)">${count}</text>
+        <text x="${x + 20}" y="195" text-anchor="middle" font-size="9" fill="var(--text-muted)">${status}</text>
+      `;
+    }).join('');
+
+    // Chart 2: Study hours last 7 days
+    const last7 = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const iso = d.toISOString().slice(0, 10);
+      const dayStudy = State.data.study.filter(s => s.date === iso && s.done);
+      const mins = dayStudy.reduce((sum, s) => sum + s.duration, 0);
+      last7.push({ date: iso, mins, label: d.toLocaleDateString(undefined, { weekday: 'short' }) });
+    }
+    const maxMins = Math.max(60, ...last7.map(d => d.mins));
+
+    const studyChartBars = last7.map((d, i) => {
+      const height = (d.mins / maxMins) * 150;
+      const x = 30 + i * 55;
+      return `
+        <rect x="${x}" y="${180 - height}" width="40" height="${height}" fill="var(--primary)" rx="4" opacity="0.85"/>
+        <text x="${x + 20}" y="${175 - height}" text-anchor="middle" font-size="10" font-weight="600" fill="var(--text)">${d.mins}m</text>
+        <text x="${x + 20}" y="195" text-anchor="middle" font-size="9" fill="var(--text-muted)">${d.label}</text>
+      `;
+    }).join('');
+
+    return `
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h3>🎓 Application Pipeline</h3>
+          <small>Status breakdown across all universities</small>
+          <svg class="chart-svg" viewBox="0 0 360 210">
+            <line x1="20" y1="180" x2="350" y2="180" stroke="var(--border)" stroke-width="1"/>
+            ${appChartBars}
+          </svg>
+        </div>
+        <div class="chart-card">
+          <h3>📚 Study Hours (Last 7 Days)</h3>
+          <small>Minutes of completed study per day</small>
+          <svg class="chart-svg" viewBox="0 0 360 210">
+            <line x1="20" y1="180" x2="350" y2="180" stroke="var(--border)" stroke-width="1"/>
+            ${studyChartBars}
+          </svg>
         </div>
       </div>
     `;
@@ -315,7 +555,6 @@ const Views = {
       { id: 'accepted', label: 'Accepted' },
       { id: 'rejected', label: 'Rejected' }
     ];
-
     return `
       <div style="display:flex;justify-content:space-between;margin-bottom:20px">
         <div></div>
@@ -326,10 +565,7 @@ const Views = {
           const items = State.data.applications.filter(a => a.status === s.id);
           return `
             <div class="kanban-col" data-status="${s.id}" ondragover="event.preventDefault()" ondrop="App.dropApplication(event, '${s.id}')">
-              <div class="kanban-col-head">
-                <span>${s.label}</span>
-                <span class="kanban-col-count">${items.length}</span>
-              </div>
+              <div class="kanban-col-head"><span>${s.label}</span><span class="kanban-col-count">${items.length}</span></div>
               ${items.map(a => `
                 <div class="kanban-card" draggable="true" data-id="${a.id}" ondragstart="App.dragApplication(event, '${a.id}')">
                   <div class="kanban-card-title">${esc(a.university)}</div>
@@ -350,13 +586,12 @@ const Views = {
   emails() {
     return `
       <div style="display:flex;justify-content:space-between;margin-bottom:20px">
-        <div></div>
+        <button class="btn btn-ghost" onclick="App.openTemplates()">📧 Email Templates</button>
         <button class="btn btn-primary" onclick="App.addEmail()">+ Log Email</button>
       </div>
       <div class="card">
         <div class="list">
           ${State.data.emails.map(e => {
-            const daysWait = daysUntil(e.dateSent) * -1;
             const overdue = e.status === 'awaiting' && daysUntil(e.followUpDate) < 0;
             return `
               <div class="list-item" style="${overdue ? 'border-color:var(--danger);background:var(--danger-soft)' : ''}">
@@ -378,7 +613,6 @@ const Views = {
     const upcoming = State.data.meetings
       .filter(m => new Date(m.date).getTime() >= Date.now() - 86400000)
       .sort((a, b) => new Date(a.date) - new Date(b.date));
-
     return `
       <div style="display:flex;justify-content:space-between;margin-bottom:20px">
         <div></div>
@@ -406,38 +640,80 @@ const Views = {
     `;
   },
 
+  tasks() {
+    const pending = State.data.tasks.filter(t => !t.done).sort((a, b) => (a.deadline || '9999').localeCompare(b.deadline || '9999'));
+    const done = State.data.tasks.filter(t => t.done);
+    return `
+      <div style="display:flex;justify-content:space-between;margin-bottom:20px">
+        <div></div>
+        <button class="btn btn-primary" onclick="App.addTask()">+ Add Task</button>
+      </div>
+      <div class="card">
+        <div class="card-head"><div><h3>Pending Tasks</h3><small>${pending.length} open</small></div></div>
+        <div>
+          ${pending.map(t => {
+            const d = daysUntil(t.deadline);
+            const overdue = d !== null && d < 0;
+            return `
+              <div class="task-item ${t.done ? 'done' : ''}" style="${overdue ? 'border-color:var(--danger)' : ''}">
+                <input type="checkbox" ${t.done ? 'checked' : ''} onchange="App.toggleTask('${t.id}')" style="width:18px;height:18px;cursor:pointer">
+                <div style="flex:1">
+                  <div class="task-item-title">${esc(t.title)}</div>
+                  <div class="task-item-meta">
+                    Due ${fmtDate(t.deadline)}
+                    ${t.source ? ` • <span class="task-source">${esc(t.source)}</span>` : ''}
+                    ${overdue ? ' • <span style="color:var(--danger);font-weight:600">Overdue</span>' : ''}
+                  </div>
+                </div>
+                <button class="btn btn-sm btn-ghost" onclick="App.editTask('${t.id}')">Edit</button>
+              </div>
+            `;
+          }).join('') || '<div class="empty"><div class="empty-icon">✅</div><div class="empty-title">No pending tasks</div></div>'}
+        </div>
+      </div>
+      ${done.length > 0 ? `
+        <div class="card" style="margin-top:16px">
+          <div class="card-head"><div><h3>Completed</h3><small>${done.length} done</small></div></div>
+          <div>
+            ${done.map(t => `
+              <div class="task-item done">
+                <input type="checkbox" checked onchange="App.toggleTask('${t.id}')" style="width:18px;height:18px;cursor:pointer">
+                <div style="flex:1">
+                  <div class="task-item-title">${esc(t.title)}</div>
+                  <div class="task-item-meta">${t.source ? `From: ${esc(t.source)}` : ''}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+    `;
+  },
+
   study() {
     const today = State.data.study.filter(s => s.date === todayISO());
     const totalMin = today.reduce((sum, s) => sum + (s.done ? s.duration : 0), 0);
-
     return `
       <div style="display:flex;justify-content:space-between;margin-bottom:20px">
         <div class="stat-card" style="padding:12px 16px">
-          <div>
-            <div class="stat-value">${totalMin} min</div>
-            <div class="stat-label">Studied today</div>
-          </div>
+          <div><div class="stat-value">${totalMin} min</div><div class="stat-label">Studied today</div></div>
         </div>
         <button class="btn btn-primary" onclick="App.addStudy()">+ Add Study Block</button>
       </div>
       <div class="card">
-        <div class="card-head">
-          <div>
-            <h3>${fmtDate(todayISO())}</h3>
-            <small>${today.filter(s => s.done).length} of ${today.length} completed</small>
-          </div>
-        </div>
+        <div class="card-head"><div><h3>${fmtDate(todayISO())}</h3><small>${today.filter(s => s.done).length} of ${today.length} completed</small></div></div>
         <div class="list">
           ${today.map(s => `
             <div class="list-item">
               <input type="checkbox" ${s.done ? 'checked' : ''} onchange="App.toggleStudy('${s.id}')" style="width:18px;height:18px;cursor:pointer">
               <div class="list-item-content">
                 <div class="list-item-title" style="${s.done ? 'text-decoration:line-through;opacity:0.6' : ''}">${esc(s.topic)}</div>
-                <div class="list-item-meta">${s.duration} min</div>
+                <div class="list-item-meta">${s.duration} min • 🍅 ${s.pomodoros || 0} pomodoros</div>
               </div>
+              ${!s.done ? `<button class="pomodoro-start" onclick="Pomodoro.start('${s.id}')">🍅 Focus</button>` : ''}
               <button class="btn btn-sm btn-ghost" onclick="App.editStudy('${s.id}')">Edit</button>
             </div>
-          `).join('') || '<div class="empty"><div class="empty-icon">📚</div><div class="empty-title">No study planned for today</div><div>Add a study block to get started</div></div>'}
+          `).join('') || '<div class="empty"><div class="empty-icon">📚</div><div class="empty-title">No study planned for today</div></div>'}
         </div>
       </div>
     `;
@@ -474,7 +750,7 @@ const Views = {
   }
 };
 
-// ========== MAIN APP CONTROLLER ==========
+// ========== MAIN APP ==========
 const App = {
   init() {
     State.init();
@@ -482,17 +758,9 @@ const App = {
     this.bindEvents();
     this.render();
     Notifier.startChecker();
-
-    // Update date display
     document.getElementById('currentDate').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
-
-    // Update notification button state
     this.updateNotifButton();
-
-    // Refresh countdown every minute
-    setInterval(() => {
-      if (State.currentView === 'dashboard') this.render();
-    }, 60000);
+    setInterval(() => { if (State.currentView === 'dashboard') this.render(); }, 60000);
   },
 
   applyTheme() {
@@ -513,7 +781,6 @@ const App = {
   },
 
   bindEvents() {
-    // Navigation
     document.querySelectorAll('.nav-link').forEach(link => {
       link.addEventListener('click', (e) => {
         e.preventDefault();
@@ -521,7 +788,6 @@ const App = {
       });
     });
 
-    // Theme toggle
     document.getElementById('themeToggle').addEventListener('click', () => {
       const curr = State.data.settings.theme;
       State.data.settings.theme = curr === 'dark' ? 'light' : curr === 'light' ? 'system' : 'dark';
@@ -529,20 +795,19 @@ const App = {
       this.applyTheme();
     });
 
-    // Notification permission
     document.getElementById('notifPermission').addEventListener('click', async () => {
       const granted = await Notifier.requestPermission();
-      if (granted) {
-        Toast.show('Reminders enabled!', 'success');
-        this.updateNotifButton();
-      }
+      if (granted) { Toast.show('Reminders enabled!', 'success'); this.updateNotifButton(); }
     });
 
-    // Dismiss reminder banner
     document.getElementById('dismissReminder').addEventListener('click', () => Notifier.hideBanner());
-
-    // Close modal
     document.getElementById('closeModal').addEventListener('click', () => Modal.close());
+    document.getElementById('closeTemplates').addEventListener('click', () => document.getElementById('templatesModal').close());
+
+    // Pomodoro widget controls
+    document.getElementById('pomodoroPlay').addEventListener('click', () => Pomodoro.toggle());
+    document.getElementById('pomodoroReset').addEventListener('click', () => Pomodoro.reset());
+    document.getElementById('pomodoroClose').addEventListener('click', () => Pomodoro.close());
 
     // Export
     document.getElementById('exportBtn').addEventListener('click', () => {
@@ -563,21 +828,19 @@ const App = {
       reader.onload = (ev) => {
         try {
           State.data = JSON.parse(ev.target.result);
+          if (!Array.isArray(State.data.tasks)) State.data.tasks = [];
           State.save();
           this.render();
-          Toast.show('Data imported successfully', 'success');
-        } catch {
-          Toast.show('Invalid backup file', 'error');
-        }
+          Toast.show('Data imported', 'success');
+        } catch { Toast.show('Invalid backup file', 'error'); }
       };
       reader.readAsText(file);
       e.target.value = '';
     });
 
-    // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
       if (e.target.matches('input, textarea, select')) return;
-      if (e.key === 'Escape') Modal.close();
+      if (e.key === 'Escape') { Modal.close(); document.getElementById('templatesModal').close(); }
     });
   },
 
@@ -589,6 +852,7 @@ const App = {
       applications: ['Applications', 'Track your university applications'],
       emails: ['Email Outreach', 'Manage professor communications'],
       meetings: ['Meetings', 'Schedule and track meetings'],
+      tasks: ['Tasks', 'Action items from meetings and goals'],
       study: ['Study Plan', 'Your daily study blocks'],
       goals: ['Goals', 'Long-term PhD milestones']
     };
@@ -600,6 +864,46 @@ const App = {
   render() {
     const container = document.getElementById('viewContainer');
     container.innerHTML = Views[State.currentView]();
+  },
+
+  // ===== TEMPLATES =====
+  openTemplates() {
+    const body = document.getElementById('templatesBody');
+    const tabs = Object.entries(EMAIL_TEMPLATES).map(([key, t], i) => `
+      <button class="template-tab ${i === 0 ? 'active' : ''}" data-template="${key}">${t.name}</button>
+    `).join('');
+    const contents = Object.entries(EMAIL_TEMPLATES).map(([key, t], i) => `
+      <div class="template-content ${i === 0 ? 'active' : ''}" data-content="${key}">
+        <div class="form-group"><label>Subject</label><input type="text" value="${esc(t.subject)}" readonly onclick="this.select()"></div>
+        <div class="form-group"><label>Body</label><div class="template-preview">${esc(t.body).replace(/\{\{([^}]+)\}\}/g, '<span class="placeholder">{{$1}}</span>')}</div></div>
+        <div class="template-actions">
+          <button type="button" class="btn btn-primary" onclick="App.copyTemplate('${key}')">📋 Copy Full Email</button>
+          <button type="button" class="btn btn-ghost" onclick="App.copyTemplateSubject('${key}')">Copy Subject</button>
+        </div>
+      </div>
+    `).join('');
+    body.innerHTML = `<div class="template-tabs">${tabs}</div>${contents}`;
+
+    body.querySelectorAll('.template-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        body.querySelectorAll('.template-tab').forEach(t => t.classList.remove('active'));
+        body.querySelectorAll('.template-content').forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        body.querySelector(`[data-content="${tab.dataset.template}"]`).classList.add('active');
+      });
+    });
+
+    document.getElementById('templatesModal').showModal();
+  },
+
+  copyTemplate(key) {
+    const t = EMAIL_TEMPLATES[key];
+    const full = `Subject: ${t.subject}\n\n${t.body}`;
+    navigator.clipboard.writeText(full).then(() => Toast.show('📋 Email copied to clipboard', 'success'));
+  },
+
+  copyTemplateSubject(key) {
+    navigator.clipboard.writeText(EMAIL_TEMPLATES[key].subject).then(() => Toast.show('Subject copied', 'success'));
   },
 
   // ===== APPLICATION ACTIONS =====
@@ -625,17 +929,8 @@ const App = {
         <div class="form-group"><label>Notes</label><textarea name="notes" rows="3"></textarea></div>
       `,
       onSubmit: (fd) => {
-        State.data.applications.push({
-          id: uid(),
-          university: fd.get('university'),
-          program: fd.get('program'),
-          deadline: fd.get('deadline'),
-          status: fd.get('status'),
-          notes: fd.get('notes')
-        });
-        State.save();
-        this.render();
-        Toast.show('Application added', 'success');
+        State.data.applications.push({ id: uid(), university: fd.get('university'), program: fd.get('program'), deadline: fd.get('deadline'), status: fd.get('status'), notes: fd.get('notes') });
+        State.save(); this.render(); Toast.show('Application added', 'success');
       }
     });
   },
@@ -658,22 +953,12 @@ const App = {
         <div class="form-group"><label>Notes</label><textarea name="notes" rows="3">${esc(a.notes)}</textarea></div>
       `,
       onSubmit: (fd) => {
-        Object.assign(a, {
-          university: fd.get('university'),
-          program: fd.get('program'),
-          deadline: fd.get('deadline'),
-          status: fd.get('status'),
-          notes: fd.get('notes')
-        });
-        State.save();
-        this.render();
-        Toast.show('Application updated', 'success');
+        Object.assign(a, { university: fd.get('university'), program: fd.get('program'), deadline: fd.get('deadline'), status: fd.get('status'), notes: fd.get('notes') });
+        State.save(); this.render(); Toast.show('Application updated', 'success');
       },
       onDelete: () => {
         State.data.applications = State.data.applications.filter(x => x.id !== id);
-        State.save();
-        this.render();
-        Toast.show('Application deleted', 'info');
+        State.save(); this.render(); Toast.show('Application deleted', 'info');
       }
     });
   },
@@ -706,17 +991,8 @@ const App = {
         </div>
       `,
       onSubmit: (fd) => {
-        State.data.emails.push({
-          id: uid(),
-          professor: fd.get('professor'),
-          university: fd.get('university'),
-          dateSent: fd.get('dateSent'),
-          followUpDate: fd.get('followUpDate'),
-          status: fd.get('status')
-        });
-        State.save();
-        this.render();
-        Toast.show('Email logged', 'success');
+        State.data.emails.push({ id: uid(), professor: fd.get('professor'), university: fd.get('university'), dateSent: fd.get('dateSent'), followUpDate: fd.get('followUpDate'), status: fd.get('status') });
+        State.save(); this.render(); Toast.show('Email logged', 'success');
       }
     });
   },
@@ -739,21 +1015,12 @@ const App = {
         </div>
       `,
       onSubmit: (fd) => {
-        Object.assign(e, {
-          professor: fd.get('professor'),
-          university: fd.get('university'),
-          dateSent: fd.get('dateSent'),
-          followUpDate: fd.get('followUpDate'),
-          status: fd.get('status')
-        });
-        State.save();
-        this.render();
-        Toast.show('Email updated', 'success');
+        Object.assign(e, { professor: fd.get('professor'), university: fd.get('university'), dateSent: fd.get('dateSent'), followUpDate: fd.get('followUpDate'), status: fd.get('status') });
+        State.save(); this.render(); Toast.show('Email updated', 'success');
       },
       onDelete: () => {
         State.data.emails = State.data.emails.filter(x => x.id !== id);
-        State.save();
-        this.render();
+        State.save(); this.render();
       }
     });
   },
@@ -766,19 +1033,12 @@ const App = {
         <div class="form-group"><label>Title</label><input name="title" required placeholder="e.g., Advisor check-in"></div>
         <div class="form-group"><label>With</label><input name="with" required placeholder="Prof. Smith"></div>
         <div class="form-group"><label>Date & Time</label><input name="date" type="datetime-local" required></div>
-        <div class="form-group"><label>Agenda / Notes</label><textarea name="agenda" rows="3"></textarea></div>
+        <div class="form-group"><label>Agenda</label><textarea name="agenda" rows="2"></textarea></div>
+        <div class="form-group"><label>Notes (use - or * for bullets)</label><textarea name="notes" rows="4" placeholder="- Action item 1&#10;- Action item 2"></textarea></div>
       `,
       onSubmit: (fd) => {
-        State.data.meetings.push({
-          id: uid(),
-          title: fd.get('title'),
-          with: fd.get('with'),
-          date: fd.get('date'),
-          agenda: fd.get('agenda')
-        });
-        State.save();
-        this.render();
-        Toast.show('Meeting scheduled', 'success');
+        State.data.meetings.push({ id: uid(), title: fd.get('title'), with: fd.get('with'), date: fd.get('date'), agenda: fd.get('agenda'), notes: fd.get('notes') });
+        State.save(); this.render(); Toast.show('Meeting scheduled', 'success');
       }
     });
   },
@@ -791,25 +1051,79 @@ const App = {
         <div class="form-group"><label>Title</label><input name="title" value="${esc(m.title)}" required></div>
         <div class="form-group"><label>With</label><input name="with" value="${esc(m.with)}" required></div>
         <div class="form-group"><label>Date & Time</label><input name="date" type="datetime-local" value="${m.date}" required></div>
-        <div class="form-group"><label>Agenda</label><textarea name="agenda" rows="3">${esc(m.agenda)}</textarea></div>
+        <div class="form-group"><label>Agenda</label><textarea name="agenda" rows="2">${esc(m.agenda)}</textarea></div>
+        <div class="form-group"><label>Notes (use - or * for bullets)</label><textarea name="notes" rows="4">${esc(m.notes || '')}</textarea></div>
+        <div style="padding:10px;background:var(--primary-soft);border-radius:var(--radius);font-size:11px;color:var(--primary);margin-top:8px">
+          💡 <strong>Tip:</strong> Each bullet point in Notes can be converted into a Task automatically.
+        </div>
       `,
       onSubmit: (fd) => {
+        const newNotes = fd.get('notes');
+        const oldNotes = m.notes || '';
         Object.assign(m, {
-          title: fd.get('title'),
-          with: fd.get('with'),
-          date: fd.get('date'),
-          agenda: fd.get('agenda')
+          title: fd.get('title'), with: fd.get('with'), date: fd.get('date'),
+          agenda: fd.get('agenda'), notes: newNotes
         });
-        State.save();
-        this.render();
-        Toast.show('Meeting updated', 'success');
+
+        // Auto-create tasks from new bullet points
+        if (newNotes && newNotes !== oldNotes) {
+          const newTasks = parseNotesToTasks(newNotes, m.title);
+          const existingTitles = new Set(State.data.tasks.map(t => t.title));
+          const freshTasks = newTasks.filter(t => !existingTitles.has(t.title));
+          if (freshTasks.length > 0) {
+            State.data.tasks.push(...freshTasks);
+            Toast.show(`✨ ${freshTasks.length} task(s) created from notes`, 'success');
+          }
+        }
+
+        State.save(); this.render(); Toast.show('Meeting updated', 'success');
       },
       onDelete: () => {
         State.data.meetings = State.data.meetings.filter(x => x.id !== id);
-        State.save();
-        this.render();
+        State.save(); this.render();
       }
     });
+  },
+
+  // ===== TASK ACTIONS =====
+  addTask() {
+    Modal.open({
+      title: 'Add Task',
+      body: `
+        <div class="form-group"><label>Task</label><input name="title" required placeholder="What needs to be done?"></div>
+        <div class="form-group"><label>Deadline</label><input name="deadline" type="date" value="${addDays(7)}"></div>
+        <div class="form-group"><label>Source (optional)</label><input name="source" placeholder="e.g., Meeting with Prof. X"></div>
+      `,
+      onSubmit: (fd) => {
+        State.data.tasks.push({ id: uid(), title: fd.get('title'), deadline: fd.get('deadline'), done: false, source: fd.get('source') || 'Manual' });
+        State.save(); this.render(); Toast.show('Task added', 'success');
+      }
+    });
+  },
+
+  editTask(id) {
+    const t = State.data.tasks.find(x => x.id === id);
+    Modal.open({
+      title: 'Edit Task',
+      body: `
+        <div class="form-group"><label>Task</label><input name="title" value="${esc(t.title)}" required></div>
+        <div class="form-group"><label>Deadline</label><input name="deadline" type="date" value="${t.deadline || ''}"></div>
+        <div class="form-group"><label>Source</label><input name="source" value="${esc(t.source || '')}"></div>
+      `,
+      onSubmit: (fd) => {
+        Object.assign(t, { title: fd.get('title'), deadline: fd.get('deadline'), source: fd.get('source') });
+        State.save(); this.render();
+      },
+      onDelete: () => {
+        State.data.tasks = State.data.tasks.filter(x => x.id !== id);
+        State.save(); this.render();
+      }
+    });
+  },
+
+  toggleTask(id) {
+    const t = State.data.tasks.find(x => x.id === id);
+    if (t) { t.done = !t.done; State.save(); this.render(); if (t.done) Toast.show('✅ Task completed', 'success'); }
   },
 
   // ===== STUDY ACTIONS =====
@@ -824,16 +1138,8 @@ const App = {
         </div>
       `,
       onSubmit: (fd) => {
-        State.data.study.push({
-          id: uid(),
-          topic: fd.get('topic'),
-          duration: Number(fd.get('duration')),
-          date: fd.get('date'),
-          done: false
-        });
-        State.save();
-        this.render();
-        Toast.show('Study block added', 'success');
+        State.data.study.push({ id: uid(), topic: fd.get('topic'), duration: Number(fd.get('duration')), date: fd.get('date'), done: false, pomodoros: 0 });
+        State.save(); this.render(); Toast.show('Study block added', 'success');
       }
     });
   },
@@ -850,18 +1156,12 @@ const App = {
         </div>
       `,
       onSubmit: (fd) => {
-        Object.assign(s, {
-          topic: fd.get('topic'),
-          duration: Number(fd.get('duration')),
-          date: fd.get('date')
-        });
-        State.save();
-        this.render();
+        Object.assign(s, { topic: fd.get('topic'), duration: Number(fd.get('duration')), date: fd.get('date') });
+        State.save(); this.render();
       },
       onDelete: () => {
         State.data.study = State.data.study.filter(x => x.id !== id);
-        State.save();
-        this.render();
+        State.save(); this.render();
       }
     });
   },
@@ -880,15 +1180,8 @@ const App = {
         <div class="form-group"><label>Deadline</label><input name="deadline" type="date" required></div>
       `,
       onSubmit: (fd) => {
-        State.data.goals.push({
-          id: uid(),
-          title: fd.get('title'),
-          deadline: fd.get('deadline'),
-          done: false
-        });
-        State.save();
-        this.render();
-        Toast.show('Goal added', 'success');
+        State.data.goals.push({ id: uid(), title: fd.get('title'), deadline: fd.get('deadline'), done: false });
+        State.save(); this.render(); Toast.show('Goal added', 'success');
       }
     });
   },
@@ -903,13 +1196,11 @@ const App = {
       `,
       onSubmit: (fd) => {
         Object.assign(g, { title: fd.get('title'), deadline: fd.get('deadline') });
-        State.save();
-        this.render();
+        State.save(); this.render();
       },
       onDelete: () => {
         State.data.goals = State.data.goals.filter(x => x.id !== id);
-        State.save();
-        this.render();
+        State.save(); this.render();
       }
     });
   },
@@ -918,8 +1209,7 @@ const App = {
     const g = State.data.goals.find(x => x.id === id);
     if (g) {
       g.done = !g.done;
-      State.save();
-      this.render();
+      State.save(); this.render();
       if (g.done) Toast.show('🎉 Goal achieved!', 'success');
     }
   }
