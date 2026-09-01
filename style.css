@@ -789,3 +789,291 @@ dialog::backdrop { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
   .brand small { display: none; }
   .today-chip { display: none; }
 }
+
+/* ========== NEW: NAV BADGE ========== */
+.nav-link { position: relative; }
+.nav-badge {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--danger);
+  color: white;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 99px;
+  min-width: 18px;
+  text-align: center;
+}
+.nav-badge.hidden { display: none; }
+
+/* ========== NEW: STREAK CARD ========== */
+.streak-card {
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+  color: white;
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.streak-fire { font-size: 32px; }
+.streak-info { flex: 1; }
+.streak-info strong { display: block; font-size: 22px; font-weight: 800; }
+.streak-info small { font-size: 11px; opacity: 0.9; }
+
+/* ========== NEW: CALENDAR ========== */
+.calendar-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.calendar-month {
+  font-size: 18px;
+  font-weight: 700;
+}
+.calendar-nav { display: flex; gap: 6px; }
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 12px;
+}
+.calendar-day-header {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  padding: 8px 0;
+}
+.calendar-day {
+  aspect-ratio: 1;
+  min-height: 80px;
+  padding: 6px;
+  background: var(--bg-soft);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.calendar-day:hover { border-color: var(--primary); }
+.calendar-day.today { border-color: var(--primary); background: var(--primary-soft); }
+.calendar-day.other-month { opacity: 0.35; }
+.calendar-day-num {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.calendar-event {
+  font-size: 9px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+.calendar-event.meeting { background: var(--primary-soft); color: var(--primary); }
+.calendar-event.deadline { background: var(--danger-soft); color: var(--danger); }
+.calendar-event.study { background: var(--success-soft); color: var(--success); }
+.calendar-event.goal { background: var(--warning-soft); color: var(--warning); }
+.calendar-more {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* ========== NEW: PROFESSOR CARDS ========== */
+.prof-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+.prof-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  transition: all 0.15s;
+}
+.prof-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.prof-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.prof-avatar {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--primary-soft);
+  color: var(--primary);
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 16px;
+}
+.prof-name { font-size: 14px; font-weight: 700; }
+.prof-uni { font-size: 11px; color: var(--text-muted); }
+.prof-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 10px;
+}
+.prof-details span { display: flex; gap: 6px; align-items: center; }
+.prof-actions { display: flex; gap: 6px; }
+
+/* ========== NEW: FUNDING CARDS ========== */
+.funding-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 10px;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.funding-amount {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--success);
+  min-width: 90px;
+  text-align: center;
+}
+.funding-info { flex: 1; }
+.funding-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.funding-meta { font-size: 11px; color: var(--text-muted); }
+
+/* ========== NEW: INBOX ========== */
+.inbox-item {
+  background: var(--bg-soft);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.inbox-content { flex: 1; font-size: 13px; line-height: 1.5; }
+.inbox-tag {
+  font-size: 9px;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.inbox-date { font-size: 10px; color: var(--text-faint); margin-top: 4px; }
+.inbox-actions { display: flex; gap: 4px; flex-direction: column; }
+
+/* ========== NEW: DOCUMENT CHECKLIST ========== */
+.doc-checklist {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+}
+.doc-checklist-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.doc-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 11px;
+}
+.doc-item input[type="checkbox"] {
+  width: 14px; height: 14px;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+.doc-item.done { color: var(--text-muted); text-decoration: line-through; }
+.doc-progress {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  font-weight: 600;
+}
+
+/* ========== NEW: WEEKLY REVIEW ========== */
+.weekly-review {
+  background: linear-gradient(135deg, var(--primary-soft), var(--success-soft));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  margin-top: 16px;
+}
+.weekly-review h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.weekly-review small {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+.review-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+.review-stat {
+  background: var(--surface);
+  padding: 12px;
+  border-radius: var(--radius);
+  text-align: center;
+}
+.review-stat-value {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--primary);
+}
+.review-stat-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+/* ========== NEW: RESPONSIVE FIXES ========== */
+@media (max-width: 900px) {
+  .calendar-grid { font-size: 10px; }
+  .calendar-day { min-height: 60px; padding: 4px; }
+  .calendar-event { font-size: 8px; }
+  .prof-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .calendar-day { min-height: 50px; }
+  .calendar-day-num { font-size: 10px; }
+  .funding-item { flex-direction: column; align-items: flex-start; }
+  .funding-amount { min-width: auto; }
+}

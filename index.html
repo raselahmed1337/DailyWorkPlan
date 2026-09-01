@@ -29,12 +29,16 @@
       </a>
       <nav class="nav">
         <a href="#" class="nav-link active" data-view="dashboard"><span>📊</span> Dashboard</a>
+        <a href="#" class="nav-link" data-view="calendar"><span>📅</span> Calendar</a>
         <a href="#" class="nav-link" data-view="applications"><span>🎓</span> Applications</a>
-        <a href="#" class="nav-link" data-view="emails"><span>📧</span> Email Outreach</a>
+        <a href="#" class="nav-link" data-view="professors"><span>🔬</span> Professors</a>
+        <a href="#" class="nav-link" data-view="funding"><span>💰</span> Funding</a>
+        <a href="#" class="nav-link" data-view="emails"><span>📧</span> Emails</a>
         <a href="#" class="nav-link" data-view="meetings"><span>🤝</span> Meetings</a>
         <a href="#" class="nav-link" data-view="tasks"><span>✅</span> Tasks</a>
-        <a href="#" class="nav-link" data-view="study"><span>📚</span> Study Plan</a>
+        <a href="#" class="nav-link" data-view="study"><span>📚</span> Study</a>
         <a href="#" class="nav-link" data-view="goals"><span>🎯</span> Goals</a>
+        <a href="#" class="nav-link" data-view="inbox"><span>📥</span> Inbox <span id="inboxBadge" class="nav-badge hidden">0</span></a>
       </nav>
       <div class="sidebar-footer">
         <button id="themeToggle" class="icon-btn" title="Toggle theme">🌙</button>
@@ -52,6 +56,7 @@
         </div>
         <div class="topbar-actions">
           <div class="today-chip"><span id="currentDate">—</span></div>
+          <button id="quickCaptureBtn" class="btn btn-primary" title="Quick capture (Ctrl+Q)">⚡ Quick Capture</button>
           <button id="notifPermission" class="btn btn-ghost">🔔 Enable Reminders</button>
         </div>
       </header>
@@ -59,7 +64,7 @@
     </main>
   </div>
 
-  <!-- Pomodoro Floating Widget -->
+  <!-- Pomodoro Widget -->
   <div id="pomodoroWidget" class="pomodoro-widget hidden">
     <div class="pomodoro-head">
       <span class="pomodoro-label">🍅 Focus Session</span>
@@ -104,6 +109,38 @@
       <button type="button" class="icon-btn" id="closeTemplates">×</button>
     </div>
     <div id="templatesBody" class="templates-body"></div>
+  </dialog>
+
+  <!-- Quick Capture Modal -->
+  <dialog id="quickCaptureModal">
+    <form id="quickCaptureForm">
+      <div class="modal-head">
+        <h2>⚡ Quick Capture</h2>
+        <button type="button" class="icon-btn" id="closeQuickCapture">×</button>
+      </div>
+      <div id="quickCaptureBody" style="padding:20px 24px">
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Dump any thought, idea, or to-do. Sort it later.</p>
+        <div class="form-group">
+          <label>What's on your mind?</label>
+          <textarea name="content" rows="4" required placeholder="e.g., Check out Prof. X's new paper on transformers..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Tag (optional)</label>
+          <select name="tag">
+            <option value="">No tag</option>
+            <option value="idea">💡 Idea</option>
+            <option value="paper">📄 Paper to read</option>
+            <option value="question">❓ Question</option>
+            <option value="todo">✅ To-do</option>
+            <option value="resource">🔗 Resource</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost">Cancel</button>
+        <button type="submit" class="btn btn-primary">Capture</button>
+      </div>
+    </form>
   </dialog>
 
   <div id="toastContainer" class="toast-container"></div>
