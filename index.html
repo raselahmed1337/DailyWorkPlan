@@ -32,11 +32,15 @@
         <a href="#" class="nav-link" data-view="calendar"><span>📅</span> Calendar</a>
         <a href="#" class="nav-link" data-view="applications"><span>🎓</span> Applications</a>
         <a href="#" class="nav-link" data-view="professors"><span>🔬</span> Professors</a>
+        <a href="#" class="nav-link" data-view="papers"><span>📄</span> Papers</a>
+        <a href="#" class="nav-link" data-view="conferences"><span>🎤</span> Conferences</a>
         <a href="#" class="nav-link" data-view="funding"><span>💰</span> Funding</a>
         <a href="#" class="nav-link" data-view="emails"><span>📧</span> Emails</a>
         <a href="#" class="nav-link" data-view="meetings"><span>🤝</span> Meetings</a>
         <a href="#" class="nav-link" data-view="tasks"><span>✅</span> Tasks</a>
+        <a href="#" class="nav-link" data-view="matrix"><span>🎯</span> Priority Matrix</a>
         <a href="#" class="nav-link" data-view="study"><span>📚</span> Study</a>
+        <a href="#" class="nav-link" data-view="journal"><span>📓</span> Journal</a>
         <a href="#" class="nav-link" data-view="goals"><span>🎯</span> Goals</a>
         <a href="#" class="nav-link" data-view="inbox"><span>📥</span> Inbox <span id="inboxBadge" class="nav-badge hidden">0</span></a>
       </nav>
@@ -56,12 +60,37 @@
         </div>
         <div class="topbar-actions">
           <div class="today-chip"><span id="currentDate">—</span></div>
-          <button id="quickCaptureBtn" class="btn btn-primary" title="Quick capture (Ctrl+Q)">⚡ Quick Capture</button>
-          <button id="notifPermission" class="btn btn-ghost">🔔 Enable Reminders</button>
+          <button id="searchBtn" class="btn btn-ghost" title="Search (Ctrl+K)">🔍 <kbd>⌘K</kbd></button>
+          <div class="notif-wrapper">
+            <button id="notifCenterBtn" class="icon-btn" title="Notifications">
+              🔔<span id="notifCount" class="notif-count hidden">0</span>
+            </button>
+            <div id="notifDropdown" class="notif-dropdown hidden">
+              <div class="notif-head">
+                <strong>Notifications</strong>
+                <button id="markAllRead" class="text-btn">Mark all read</button>
+              </div>
+              <div id="notifList" class="notif-list"></div>
+            </div>
+          </div>
+          <button id="quickCaptureBtn" class="btn btn-primary">⚡ Capture</button>
         </div>
       </header>
       <div id="viewContainer" class="view-container"></div>
     </main>
+  </div>
+
+  <!-- Floating Action Button -->
+  <div id="fab" class="fab">
+    <button id="fabMain" class="fab-main" aria-label="Quick actions">✚</button>
+    <div class="fab-menu">
+      <button class="fab-item" data-action="task" title="New Task">✅<span>Task</span></button>
+      <button class="fab-item" data-action="email" title="Log Email">📧<span>Email</span></button>
+      <button class="fab-item" data-action="meeting" title="Meeting">🤝<span>Meeting</span></button>
+      <button class="fab-item" data-action="study" title="Study">📚<span>Study</span></button>
+      <button class="fab-item" data-action="paper" title="Paper">📄<span>Paper</span></button>
+      <button class="fab-item" data-action="goal" title="Goal">🎯<span>Goal</span></button>
+    </div>
   </div>
 
   <!-- Pomodoro Widget -->
@@ -82,9 +111,7 @@
       <button id="pomodoroPlay" class="btn btn-primary btn-sm">▶ Start</button>
       <button id="pomodoroReset" class="btn btn-ghost btn-sm">↻ Reset</button>
     </div>
-    <div class="pomodoro-stats">
-      <span>🍅 <strong id="pomodoroCount">0</strong> completed</span>
-    </div>
+    <div class="pomodoro-stats"><span>🍅 <strong id="pomodoroCount">0</strong> completed</span></div>
   </div>
 
   <!-- Universal Modal -->
@@ -100,6 +127,23 @@
         <button type="submit" class="btn btn-primary">Save</button>
       </div>
     </form>
+  </dialog>
+
+  <!-- Command Palette -->
+  <dialog id="commandPalette" class="command-palette">
+    <div class="command-palette-inner">
+      <div class="command-search">
+        <span class="command-icon">⌘</span>
+        <input id="commandInput" type="text" placeholder="Search everything or type a command..." autocomplete="off">
+        <kbd class="command-kbd">ESC</kbd>
+      </div>
+      <div id="commandResults" class="command-results"></div>
+      <div class="command-footer">
+        <span><kbd>↑↓</kbd> Navigate</span>
+        <span><kbd>↵</kbd> Select</span>
+        <span><kbd>ESC</kbd> Close</span>
+      </div>
+    </div>
   </dialog>
 
   <!-- Templates Modal -->
@@ -118,18 +162,18 @@
         <h2>⚡ Quick Capture</h2>
         <button type="button" class="icon-btn" id="closeQuickCapture">×</button>
       </div>
-      <div id="quickCaptureBody" style="padding:20px 24px">
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Dump any thought, idea, or to-do. Sort it later.</p>
+      <div style="padding:20px 24px">
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Dump any thought. Sort it later.</p>
         <div class="form-group">
           <label>What's on your mind?</label>
-          <textarea name="content" rows="4" required placeholder="e.g., Check out Prof. X's new paper on transformers..."></textarea>
+          <textarea name="content" rows="4" required placeholder="e.g., Check out Prof. X's new paper..."></textarea>
         </div>
         <div class="form-group">
-          <label>Tag (optional)</label>
+          <label>Tag</label>
           <select name="tag">
             <option value="">No tag</option>
             <option value="idea">💡 Idea</option>
-            <option value="paper">📄 Paper to read</option>
+            <option value="paper">📄 Paper</option>
             <option value="question">❓ Question</option>
             <option value="todo">✅ To-do</option>
             <option value="resource">🔗 Resource</option>
@@ -137,40 +181,48 @@
         </div>
       </div>
       <div class="modal-actions">
-        <button type="button" class="btn btn-ghost">Cancel</button>
+        <button type="button" class="btn btn-ghost" onclick="document.getElementById('quickCaptureModal').close()">Cancel</button>
         <button type="submit" class="btn btn-primary">Capture</button>
       </div>
     </form>
   </dialog>
 
+  <!-- Export Image Modal -->
+  <dialog id="exportImageModal">
+    <div class="modal-head">
+      <h2>📤 Share Your Progress</h2>
+      <button type="button" class="icon-btn" onclick="document.getElementById('exportImageModal').close()">×</button>
+    </div>
+    <div style="padding:20px 24px">
+      <div id="shareCard" class="share-card">
+        <div class="share-card-header">
+          <div class="share-card-logo">🎓 ScholarSync</div>
+          <div class="share-card-date" id="shareDate">—</div>
+        </div>
+        <div class="share-card-title">My PhD Journey</div>
+        <div class="share-card-stats" id="shareStats"></div>
+        <div class="share-card-streak" id="shareStreak"></div>
+        <div class="share-card-footer">
+          <span>#PhDJourney</span>
+          <span>#ScholarSync</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn btn-primary" onclick="App.downloadShareCard()">📥 Download PNG</button>
+        <button class="btn btn-ghost" onclick="App.copyShareText()">📋 Copy Text</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Notification Center -->
   <div id="toastContainer" class="toast-container"></div>
+
+  <!-- Confetti Canvas -->
+  <canvas id="confettiCanvas" class="confetti-canvas"></canvas>
 
   <script src="app.js"></script>
   <script>
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
   </script>
-
-  <!-- Command Palette Modal -->
-<dialog id="commandPalette" class="command-palette">
-  <div class="command-palette-inner">
-    <div class="command-search">
-      <span class="command-icon">⌘</span>
-      <input 
-        id="commandInput" 
-        type="text" 
-        placeholder="Search tasks, applications, professors... or type a command"
-        autocomplete="off"
-        autofocus
-      >
-      <kbd class="command-kbd">ESC</kbd>
-    </div>
-    <div id="commandResults" class="command-results"></div>
-    <div class="command-footer">
-      <span><kbd>↑↓</kbd> Navigate</span>
-      <span><kbd>↵</kbd> Select</span>
-      <span><kbd>ESC</kbd> Close</span>
-    </div>
-  </div>
-</dialog>
 </body>
 </html>
