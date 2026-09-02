@@ -1405,3 +1405,304 @@ const App = {
 };
 
 document.addEventListener('DOMContentLoaded', () => App.init());
+
+
+
+// ========== COMMAND PALETTE ==========
+const CommandPalette = {
+  isOpen: false,
+  selectedIndex: 0,
+  items: [],
+  recentItems: [],
+
+  open() {
+    this.isOpen = true;
+    const dialog = document.getElementById('commandPalette');
+    dialog.showModal();
+    document.getElementById('commandInput').focus();
+    this.selectedIndex = 0;
+    this.render('');
+  },
+
+  close() {
+    this.isOpen = false;
+    document.getElementById('commandPalette').close();
+    document.getElementById('commandInput').value = '';
+  },
+
+  render(query) {
+    const results = document.getElementById('commandResults');
+    
+    // Build searchable items
+    this.items = this.buildItems();
+    
+    // Filter by query
+    const filtered = query 
+      ? this.fuzzySearch(this.items, query)
+      : this.items.slice(0, 20);
+
+    if (filtered.length === 0) {
+      results.innerHTML = '<div class="command-empty">No results found</div>';
+      return;
+    }
+
+    // Group by type
+    const groups = {};
+    filtered.forEach((item, index) => {
+      if (!groups[item.group]) groups[item.group] = [];
+      groups[item.group].push({ ...item, index });
+    });
+
+    // Render
+    let html = '';
+    Object.entries(groups).forEach(([group, items]) => {
+      html += `<div class="command-group">`;
+      html += `<div class="command-group-title">${group}</div>`;
+      items.forEach(item => {
+        const isSelected = item.index === this.selectedIndex;
+        html += `
+          <div class="command-item ${isSelected ? 'selected' : ''}" data-index="${item.index}" onclick="CommandPalette.execute(${item.index})">
+            <div class="command-item-icon">${item.icon}</div>
+            <div class="command-item-content">
+              <div class="command-item-title">${item.title}</div>
+              ${item.meta ? `<div class="command-item-meta">${item.meta}</div>` : ''}
+            </div>
+            ${item.shortcut ? `<div class="command-item-shortcut">${item.shortcut}</div>` : ''}
+          </div>
+        `;
+      });
+      html += `</div>`;
+    });
+
+    results.innerHTML = html;
+  },
+
+  buildItems() {
+    const items = [];
+
+    // Quick Actions
+    items.push(
+      { group: 'Quick Actions', icon: '✚', title: 'New Task', action: () => App.addTask(), shortcut: '⌘N' },
+      { group: 'Quick Actions', icon: '📧', title: 'Log Email', action: () => App.addEmail() },
+      { group: 'Quick Actions', icon: '🤝', title: 'Schedule Meeting', action: () => App.addMeeting() },
+      { group: 'Quick Actions', icon: '📚', title: 'Add Study Block', action: () => App.addStudy() },
+      { group: 'Quick Actions', icon: '🎯', title: 'Add Goal', action: () => App.addGoal() },
+      { group: 'Quick Actions', icon: '🎓', title: 'Add Application', action: () => App.addApplication() },
+      { group: 'Quick Actions', icon: '🔬', title: 'Add Professor', action: () => App.addProfessor() },
+      { group: 'Quick Actions', icon: '💰', title: 'Add Funding', action: () => App.addFunding() },
+      { group: 'Quick Actions', icon: '⚡', title: 'Quick Capture', action: () => App.openQuickCapture(), shortcut: '⌘Q' }
+    );
+
+    // Navigation
+    items.push(
+      { group: 'Navigation', icon: '📊', title: 'Dashboard', action: () => App.switchView('dashboard'), shortcut: '⌘1' },
+      { group: 'Navigation', icon: '📅', title: 'Calendar', action: () => App.switchView('calendar'), shortcut: '⌘2' },
+      { group: 'Navigation', icon: '🎓', title: 'Applications', action: () => App.switchView('applications'), shortcut: '⌘3' },
+      { group: 'Navigation', icon: '🔬', title: 'Professors', action: () => App.switchView('professors'), shortcut: '⌘4' },
+      { group: 'Navigation', icon: '💰', title: 'Funding', action: () => App.switchView('funding'), shortcut: '⌘5' },
+      { group: 'Navigation', icon: '📧', title: 'Emails', action: () => App.switchView('emails') },
+      { group: 'Navigation', icon: '🤝', title: 'Meetings', action: () => App.switchView('meetings') },
+      { group: 'Navigation', icon: '✅', title: 'Tasks', action: () => App.switchView('tasks') },
+      { group: 'Navigation', icon: '📚', title: 'Study', action: () => App.switchView('study') },
+      { group: 'Navigation', icon: '🎯', title: 'Goals', action: () => App.switchView('goals') },
+      { group: 'Navigation', icon: '📥', title: 'Inbox', action: () => App.switchView('inbox') }
+    );
+
+    // Tasks
+    State.data.tasks.forEach(t => {
+      items.push({
+        group: 'Tasks',
+        icon: t.done ? '✅' : '⬜',
+        title: t.title,
+        meta: t.deadline ? `Due ${fmtDate(t.deadline)}` : 'No deadline',
+        action: () => {
+          App.switchView('tasks');
+          setTimeout(() => {
+            const el = document.querySelector(`[data-task-id="${t.id}"]`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 100);
+        }
+      });
+    });
+
+    // Applications
+    State.data.applications.forEach(a => {
+      items.push({
+        group: 'Applications',
+        icon: '🎓',
+        title: a.university,
+        meta: `${a.program} • ${a.status}`,
+        action: () => {
+          App.switchView('applications');
+          setTimeout(() => App.editApplication(a.id), 100);
+        }
+      });
+    });
+
+    // Professors
+    State.data.professors.forEach(p => {
+      items.push({
+        group: 'Professors',
+        icon: '🔬',
+        title: p.name,
+        meta: `${p.university}${p.lab ? ` • ${p.lab}` : ''}`,
+        action: () => {
+          App.switchView('professors');
+          setTimeout(() => App.editProfessor(p.id), 100);
+        }
+      });
+    });
+
+    // Meetings
+    State.data.meetings.forEach(m => {
+      items.push({
+        group: 'Meetings',
+        icon: '🤝',
+        title: m.title,
+        meta: `${m.with} • ${fmtDate(m.date.slice(0, 10))}`,
+        action: () => {
+          App.switchView('meetings');
+          setTimeout(() => App.editMeeting(m.id), 100);
+        }
+      });
+    });
+
+    // Emails
+    State.data.emails.forEach(e => {
+      items.push({
+        group: 'Emails',
+        icon: '📧',
+        title: e.professor,
+        meta: `${e.university} • ${e.status}`,
+        action: () => {
+          App.switchView('emails');
+          setTimeout(() => App.editEmail(e.id), 100);
+        }
+      });
+    });
+
+    // Study Blocks
+    State.data.study.forEach(s => {
+      items.push({
+        group: 'Study',
+        icon: '📚',
+        title: s.topic,
+        meta: `${s.duration} min • ${fmtDate(s.date)}`,
+        action: () => {
+          App.switchView('study');
+          setTimeout(() => App.editStudy(s.id), 100);
+        }
+      });
+    });
+
+    // Goals
+    State.data.goals.forEach(g => {
+      items.push({
+        group: 'Goals',
+        icon: g.done ? '🎉' : '🎯',
+        title: g.title,
+        meta: `Due ${fmtDate(g.deadline)}`,
+        action: () => {
+          App.switchView('goals');
+          setTimeout(() => App.editGoal(g.id), 100);
+        }
+      });
+    });
+
+    // System Actions
+    items.push(
+      { group: 'System', icon: '💾', title: 'Export Backup', action: () => document.getElementById('exportBtn').click() },
+      { group: 'System', icon: '📂', title: 'Import Backup', action: () => document.getElementById('importBtn').click() },
+      { group: 'System', icon: '🌙', title: 'Toggle Dark Mode', action: () => document.getElementById('themeToggle').click() },
+      { group: 'System', icon: '🔔', title: 'Toggle Reminders', action: () => document.getElementById('notifPermission').click() }
+    );
+
+    return items;
+  },
+
+  fuzzySearch(items, query) {
+    const q = query.toLowerCase();
+    return items
+      .map(item => {
+        const titleMatch = item.title.toLowerCase().includes(q);
+        const metaMatch = item.meta?.toLowerCase().includes(q);
+        const score = titleMatch ? 2 : metaMatch ? 1 : 0;
+        return { ...item, score };
+      })
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 30);
+  },
+
+  execute(index) {
+    const item = this.items[index];
+    if (!item) return;
+    
+    this.close();
+    
+    // Track in recent
+    this.recentItems.unshift(item);
+    this.recentItems = this.recentItems.slice(0, 5);
+    
+    // Execute action
+    setTimeout(() => item.action(), 100);
+  },
+
+  navigate(direction) {
+    this.selectedIndex += direction;
+    if (this.selectedIndex < 0) this.selectedIndex = this.items.length - 1;
+    if (this.selectedIndex >= this.items.length) this.selectedIndex = 0;
+    
+    // Update UI
+    document.querySelectorAll('.command-item').forEach((el, i) => {
+      el.classList.toggle('selected', i === this.selectedIndex);
+    });
+
+    // Scroll into view
+    const selected = document.querySelector('.command-item.selected');
+    if (selected) selected.scrollIntoView({ block: 'nearest' });
+  }
+};
+
+// Bind command palette events
+document.addEventListener('keydown', (e) => {
+  // Open with Ctrl/Cmd + K
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    if (CommandPalette.isOpen) {
+      CommandPalette.close();
+    } else {
+      CommandPalette.open();
+    }
+  }
+
+  // Navigation when palette is open
+  if (CommandPalette.isOpen) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      CommandPalette.navigate(1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      CommandPalette.navigate(-1);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      CommandPalette.execute(CommandPalette.selectedIndex);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      CommandPalette.close();
+    }
+  }
+});
+
+// Search input handler
+document.getElementById('commandInput')?.addEventListener('input', (e) => {
+  CommandPalette.selectedIndex = 0;
+  CommandPalette.render(e.target.value);
+});
+
+// Close on backdrop click
+document.getElementById('commandPalette')?.addEventListener('click', (e) => {
+  if (e.target.id === 'commandPalette') {
+    CommandPalette.close();
+  }
+});

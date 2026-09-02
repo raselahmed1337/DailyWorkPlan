@@ -149,5 +149,28 @@
   <script>
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
   </script>
+
+  <!-- Command Palette Modal -->
+<dialog id="commandPalette" class="command-palette">
+  <div class="command-palette-inner">
+    <div class="command-search">
+      <span class="command-icon">⌘</span>
+      <input 
+        id="commandInput" 
+        type="text" 
+        placeholder="Search tasks, applications, professors... or type a command"
+        autocomplete="off"
+        autofocus
+      >
+      <kbd class="command-kbd">ESC</kbd>
+    </div>
+    <div id="commandResults" class="command-results"></div>
+    <div class="command-footer">
+      <span><kbd>↑↓</kbd> Navigate</span>
+      <span><kbd>↵</kbd> Select</span>
+      <span><kbd>ESC</kbd> Close</span>
+    </div>
+  </div>
+</dialog>
 </body>
 </html>
